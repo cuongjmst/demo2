@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -29,5 +31,9 @@ public class AuthController {
         String token = authHeader.substring(7);
         authService.logout(token);
         return ResponseEntity.ok("Đăng xuất thành công!");
+    }
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(@RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(authService.refreshToken(body.get("refreshToken")));
     }
 }

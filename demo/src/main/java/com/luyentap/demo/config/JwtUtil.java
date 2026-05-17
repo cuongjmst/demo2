@@ -21,6 +21,15 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
+    public String generateRefreshToken(String username) {
+        return Jwts.builder()
+                .subject(username)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000L)) // 7 ngày
+                .signWith(getKey())
+                .compact();
+    }
+
     public String generateToken(String username) {
         return Jwts.builder()
                 .subject(username)

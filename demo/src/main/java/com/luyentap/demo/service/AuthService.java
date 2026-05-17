@@ -5,12 +5,10 @@ import com.luyentap.demo.dto.RegisterRequest;
 import com.luyentap.demo.entity.User;
 import com.luyentap.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -19,7 +17,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final RedisTemplate<String, String> redisTemplate;
+    private final BlacklistService blacklistService;
 
     public String register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -40,19 +38,28 @@ public class AuthService {
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new RuntimeException("Sai username hoặc password!");
         }
-        String token = jwtUtil.generateToken(username);
-        return Map.of("token", token);
+        String accessToken = jwtUtil.generateToken(username);
+        String refreshToken = jwtUtil.generateRefreshToken(username);
+        user.setRefreshToken(refreshToken);
+        userRepository.save(user);
+        return Map.of(
+                "accessToken", accessToken,
+                "refreshToken", refreshToken
+        );
     }
 
-    // thay inject RedisTemplate bằng BlacklistService
-    private final BlacklistService blacklistService;
+    public Map<String, String> refreshToken(String refreshToken) {
+        User user = userRepository.findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new RuntimeException("Refresh token không hợp lệ!"));
+        if (!jwtUtil.isValid(refreshToken)) {
+            throw new RuntimeException("Refresh token đã hết hạn!");
+        }
+        String newAccessToken = jwtUtil.generateToken(user.getUsername());
+        return Map.of("accessToken", newAccessToken);
+    }
 
     public void logout(String token) {
         long expirationMs = jwtUtil.getExpiration(token);
         blacklistService.blacklist(token, expirationMs);
-    }
-
-    public boolean isBlacklisted(String token) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey("blacklist:" + token));
     }
 }

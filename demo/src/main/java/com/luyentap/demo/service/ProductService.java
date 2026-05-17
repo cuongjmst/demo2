@@ -4,9 +4,11 @@ import com.luyentap.demo.dto.ProductDTO;
 import com.luyentap.demo.entity.Product;
 import com.luyentap.demo.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -14,8 +16,12 @@ public class ProductService {
 
     private final ProductRepository productRepository;
 
-    public List<Product> getAll() {
-        return productRepository.findAll();
+    public Page<Product> getAll(String name, int page, int size, String sortBy) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
+        if (name != null && !name.isEmpty()) {
+            return productRepository.findByNameContainingIgnoreCase(name, pageable);
+        }
+        return productRepository.findAll(pageable);
     }
 
     public Product getById(Long id) {
